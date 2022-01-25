@@ -1,5 +1,10 @@
 package logrus
 
+import (
+	"fmt"
+	"os"
+)
+
 // A hook to be fired when logging on the logging levels returned from
 // `Levels()` on your implementation of the interface. Note that this is not
 // fired in a goroutine or a channel with workers, you should handle such
@@ -31,4 +36,20 @@ func (hooks LevelHooks) Fire(level Level, entry *Entry) error {
 	}
 
 	return nil
+}
+
+type WriteHook interface {
+	BeforeWrite(*ImmutableEntry) error
+}
+
+func (hooks LevelHooks) BeforeWrite(level Level, entry *ImmutableEntry) {
+	for _, hook := range hooks[level] {
+		if w, ok := hook.(WriteHook); ok {
+			if err := w.BeforeWrite(entry); err == nil {
+				continue
+			} else {
+				_, _ = fmt.Fprintf(os.Stderr, "error before write: %v\n", err)
+			}
+		}
+	}
 }
